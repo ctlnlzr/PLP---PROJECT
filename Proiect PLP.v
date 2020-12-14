@@ -2,7 +2,9 @@
 Inductive Var := a | b | c | d | e | i | n | m | sum | x | y | z.
 Scheme Equality for Var.
 
-Require Import String.
+Require Import Strings.String.
+Local Open Scope list_scope.
+
 (*Integer*)
 Inductive int :=
 | pozitiv : nat -> int
@@ -21,26 +23,27 @@ Scheme Equality for Value.
 Definition Env := Var -> Value.
 
 (*Expresii pentru nat, int, string, bool.*)
-Inductive Exp :=
-| anum : nat -> Exp
-| aint : int -> Exp
-| str : string -> Exp
-| avar : Var -> Exp
-| secv_val : Exp -> Exp -> Exp
-| nplus : Exp -> Exp -> Exp
-| nmul : Exp -> Exp -> Exp
-| iplus : Exp -> Exp -> Exp
-| imul : Exp -> Exp -> Exp
-| concat : Exp -> Exp -> Exp
-| eq_str : Exp -> Exp -> Exp
-| btrue : Exp
-| bfalse : Exp
-| blessthan : Exp -> Exp -> Exp
-| bnot : Exp -> Exp
-| band : Exp -> Exp -> Exp.
-Coercion anum : nat >-> Exp.
-Coercion aint : int >-> Exp.
-Coercion avar : Var >-> Exp.
+Inductive AExp :=
+| anum : nat -> AExp
+| aint : int -> AExp
+| avar : Var -> AExp
+| nplus : AExp -> AExp -> AExp
+| nmul : AExp -> AExp -> AExp
+| iplus : AExp -> AExp -> AExp
+| imul : AExp -> AExp -> AExp.
+Inductive SExp :=
+| str : string -> SExp
+| concat : SExp -> SExp -> SExp
+| eq_str : SExp -> SExp -> SExp.
+Inductive BExp :=
+| btrue : BExp
+| bfalse : BExp
+| blessthan : BExp -> BExp -> BExp
+| bnot : BExp -> BExp
+| band : BExp -> BExp -> BExp.
+Coercion anum : nat >-> AExp.
+Coercion aint : int >-> AExp.
+Coercion avar : Var >-> AExp.
 
 Notation "A +' B" := (nplus A B) (at level 50, left associativity).
 Notation "A *' B" := (nmul A B) (at level 49, left associativity).
@@ -103,6 +106,65 @@ Inductive Enum :=
 Notation "//" := (nule) (at level 100).
 Notation "E1 // E2" := (sir_e E1 E2) (at level 100).
 
+Inductive Mem :=
+  | mem_default : Mem
+  | offset : nat -> Mem. (* offset which indicates the current number of memory zones *)
+
+Scheme Equality for Mem.
+
+(* Environment *)
+Definition Env := string -> Mem.
+
+(* Memory Layer *)
+Definition MemLayer := Mem -> Result.
+
+(* Stack *)
+Definition Stack := list Env.
+
+(* Configuration *)
+Inductive Config :=
+  (* nat: last memory zone
+     Env: environment
+     MemLayer: memory layer
+     Stack: stack 
+  *)
+  | config : nat -> Env -> MemLayer -> Stack -> Config.
+
+(* Function for updating the environment *)
+Definition update_env (env: Env) (x: string) (n: Mem) : Env :=
+  fun y =>
+      (* If the variable has assigned a default memory zone, 
+         then it will be updated with the current memory offset *)
+      if (andb (string_beq x y ) (Mem_beq (env y) mem_default))
+      then
+        n
+      else
+        (env y).
+
+Definition env : Env := fun x => mem_default.
+
+(* Initially each variable is assigned to a default memory zone *)
+Compute (env "z"). (* The variable is not yet declared *)
+
+(* Example of updating the environment, based on a specific memory offset *)
+Compute (update_env env "x" (offset 9)) "x".
+
+(* Function for updating the memory layer *)
+Definition update_mem (mem : MemLayer) (env : Env) (x : string) (type : Mem) (v : Result) : MemLayer :=
+  fun y =>
+    (* To be implemented based on the functionalities of your own language
+       This implementation should be similar to the "update" function from "Week_7.v" *)
+
+(* Each variable/function name is initially mapped to undeclared *)
+Definition mem : MemLayer := fun x => err_undecl.
+
+(* Pay attention!!! In order to be able to monitor the state of the entire program, you need to
+   implement a function "update_conf", which updates the 
+   entire configuration (environment, memory layout and stack).  
+   config : nat -> Env -> MemLayer -> Stack -> Config (the first value represents the last memory zone, 
+   and you will need to find a way to increment it each time a new variable/function is declared)
+*)
+
 Inductive Stmt :=
 | skip : Stmt
 | decl : Var -> Stmt
@@ -110,23 +172,42 @@ Inductive Stmt :=
 | decl_Q : Queue -> Stmt
 | decl_A : Array -> Stmt
 | decl_E : Enum -> Stmt
-| assignment : Var -> Exp -> Stmt
+| assignment_a : Var -> AExp -> Stmt
+| assignment_s : Var -> SExp -> Stmt
+| assignment_b : Var -> BExp -> Stmt
 | seq : Stmt -> Stmt -> Stmt
-| while : Exp -> Stmt -> Stmt
-| ifthen : Exp -> Stmt -> Stmt.
+| while : BExp -> Stmt -> Stmt
+| ifthen : BExp -> Stmt -> Stmt
+| func : Func -> Stmt.
 
 Notation "A :=: B" :=(assignment A B) (at level 45).
 Notation "S1 ;; S2" :=(seq S1 S2) (at level 57).
 Notation "'iff' A 'thenn' S 'endd'" := (ifthen A S) (at level 60).
-
-Inductive rez :=
-| base : Tip -> rez
-| show_a : Array -> nat -> rez
-| show_e : Enum -> string -> rez
-| func : string -> Exp -> Stmt -> rez.
-
 Notation " A - N - " := (show_a A N) (at level 90).
 Notation " E ~ S ~ ":= (show_e E S) (at level 90).
 Notation " S1 'parametri:' E 'corp:' S2 'Final_f'" := (func S1 E S2) (at level 50). 
+
+
+Inductive Result :=
+  | err_undecl : Result
+  | err_assign : Result
+  | default : Result
+  | res_nat : ErrorNat -> Result
+  | res_bool : ErrorBool -> Result
+  | code : Stmt -> Result. (* The functions' names are mapped to the code inside the function *)
+
+Scheme Equality for Result.
+
+
+Definition check_eq_over_types (t1 : Result)(t2 : Result) : bool :=
+  match t1 with
+  | err_assign => match t2 with 
+                   | err_assign => true
+                   | _ => false
+                   end
+  (* Fill in the implementation for the rest of the cases... *)
+  end.
+
+
 
 Inductive Typ : Type := Bool | Nat | Int | String .
