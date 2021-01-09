@@ -74,7 +74,7 @@ Inductive Error_Str :=
 | error_str
 | strng : string -> Error_Str.
 Coercion strng : string >-> Error_Str.
-
+Scheme Equality for Error_Str.
 Inductive SExp :=
 | sconst : Error_Str -> SExp
 | svar : string -> SExp
@@ -113,60 +113,67 @@ Notation "A &* B" := (band A B) (at level 68).
 Notation "V '<' N '>b'" := (belem_arr V N) (at level 48).
 Check btrue &* "a".
 
-
 Inductive Stmt :=
 | skip : Stmt
 | param_apel : Tip -> Stmt
-| decl_nat : string -> Stmt
+| decl_nat : string -> Stmt (*un update mem din mem_default direct in nat_val introducand la update o valoare default*)
 | decl_int : string -> Stmt
 | decl_str : string -> Stmt
 | decl_bool : string -> Stmt
-| decl_S : string -> Stmt
+| decl_S_a : string -> Stmt 
+| decl_S_i : string -> Stmt 
+| decl_S_b : string -> Stmt 
 | elim_s : string -> Stmt 
-| add_s_a :  string -> AExp -> Stmt 
-| add_s_i :  string -> IExp -> Stmt 
-| add_s_b :  string -> BExp -> Stmt
-| decl_Q : string -> Stmt
-| elim_q :  string -> Stmt 
-| add_q_a :  string -> AExp -> Stmt 
-| add_q_i :  string -> IExp -> Stmt 
-| add_q_b :  string -> BExp -> Stmt
-| decl_A : string -> nat -> Stmt
-| assig_val_a :  string -> nat -> AExp -> Stmt 
-| assig_val_i :  string -> nat -> AExp -> Stmt 
-| assig_val_b :  string -> nat -> AExp -> Stmt 
-| decl_E : string -> Stmt
-| add_e :  string -> string -> Stmt 
-| elim_e : string -> string -> Stmt 
-| decl_func : string -> Stmt -> Stmt -> Stmt
-| assignment_a : string -> AExp -> Stmt
-| assignment_i : string -> IExp -> Stmt
-| assignment_s : string -> SExp -> Stmt
-| assignment_b : string -> BExp -> Stmt
+| add_s_a :  string -> AExp -> Stmt  (*update doar mem, plus poz_valabil*)
+| add_s_i :  string -> IExp -> Stmt (*update doar mem, plus poz_valabil*)
+| add_s_b :  string -> BExp -> Stmt(*update doar mem, plus poz_valabil*)
+| decl_Q_a : string -> Stmt (*update conf + dim standard*)
+| decl_Q_i : string -> Stmt (*update conf + dim standard*)
+| decl_Q_b : string -> Stmt (*update conf + dim standard*)
+| elim_q :  string -> Stmt (*update doar mem, plus poz_valabil si in loc de val pun undecl*)
+| add_q_a :  string -> AExp -> Stmt  (*update doar mem, plus poz_valabil*)
+| add_q_i :  string -> IExp -> Stmt (*update doar mem, plus poz_valabil*)
+| add_q_b :  string -> BExp -> Stmt (*update doar mem, plus poz_valabil*)
+| decl_A_a : string -> nat -> Stmt (*update conf plus dim data*)
+| decl_A_i : string -> nat -> Stmt (*update conf plus dim data*)
+| decl_A_b : string -> nat -> Stmt (*update conf plus dim data*)
+| assig_val_a :  string -> nat -> AExp -> Stmt (*update doar mem*)
+| assig_val_i :  string -> nat -> IExp -> Stmt  (*update doar mem*)
+| assig_val_b :  string -> nat -> BExp -> Stmt (*update doar mem*)
+| decl_E : string -> Stmt (*update conf plus dim data*)
+| add_e :  string -> string -> nat -> Stmt (*update doar mem, plus poz_valabil*)
+| elim_e : string -> string -> Stmt  (*update doar mem, plus undecl*)
+| assig_a : string -> AExp -> Stmt (*update doar mem, plus poz_valabil*)
+| assig_i : string -> IExp -> Stmt (*update doar mem*)
+| assig_s : string -> SExp -> Stmt
+| assig_b : string -> BExp -> Stmt
 | seq : Stmt -> Stmt -> Stmt
 | while : BExp -> Stmt -> Stmt
 | ifthen : BExp -> Stmt -> Stmt
+| decl_func : string -> Stmt -> Stmt -> Stmt (*update doar mem, pun la val code, adica param plus cod*)
 | apel_func : string -> Stmt -> Stmt (*string -> list string -> Stmt -> Stmt, lista pe care sa o fac eu pt parametri*)
 | ret : string -> Stmt. (*sa modifice in env anterior valoarea rezultat*)
 Coercion param_apel : Tip >-> Stmt.
 
-Reserved Notation "A-{ O , E , M , S , C }-> CON" (at level 70).
-Inductive eval : Stmt -> nat -> Env -> MemLayer -> Stack_mem -> Config -> Config -> Prop :=
-| e_decl_nat : forall s last_off sigma mem config st, decl_nat s -{ sigma, mem, config }-> (update_conf_decl_var config sigma mem last_off St s)
-where "A-{ O , E , M , S , C }-> CON" := (eval A O E M S C CON).
 
 Notation "'unsig' A" := (decl_nat A) (at level 30).
 Notation "'integ' A" := (decl_int A) (at level 30).
 Notation "'boolean' A" := (decl_bool A) (at level 30).
 Notation "'str' A" := (decl_str A) (at level 30).
-Notation "'que' Q" := (decl_Q Q) (at level 30).
-Notation "'stk' S" := (decl_S S) (at level 30).
-Notation "AR < N >" := (decl_A AR N) (at level 30).
+Notation "'queu' Q" := (decl_Q_a Q) (at level 30).
+Notation "'quei' Q" := (decl_Q_i Q) (at level 30).
+Notation "'queb' Q" := (decl_Q_b Q) (at level 30).
+Notation "'stku' S" := (decl_S_a S) (at level 30).
+Notation "'stki' S" := (decl_S_i S) (at level 30).
+Notation "'stkb' S" := (decl_S_b S) (at level 30).
+Notation "AR 'dimu:' N " := (decl_A_a AR N) (at level 30).
+Notation "AR 'dimi:' N " := (decl_A_i AR N) (at level 30).
+Notation "AR 'dimb:' N " := (decl_A_b AR N) (at level 30).
 Notation "'enum' E" := (decl_E E) (at level 30).
-Notation "A ':=a:' B" :=(assignment_a A B) (at level 45).
-Notation "A ':=i:' B" :=(assignment_i A B) (at level 45).
-Notation "A ':=s:' B" :=(assignment_s A B) (at level 45).
-Notation "A ':=b:' B" :=(assignment_b A B) (at level 45).
+Notation "A ':=a:' B" :=(assig_a A B) (at level 45).
+Notation "A ':=i:' B" :=(assig_i A B) (at level 45).
+Notation "A ':=s:' B" :=(assig_s A B) (at level 45).
+Notation "A ':=b:' B" :=(assig_b A B) (at level 45).
 Notation "S1 ;; S2" :=(seq S1 S2) (at level 57).
 Notation "'iff' A 'thenn' S 'endd'" := (ifthen A S) (at level 60).
 Notation "'functie' S ~ P ~ { ST }" := (decl_func S P ST) (at level 50). 
@@ -182,29 +189,29 @@ Notation "A 's-'" := (elim_s A) (at level 71).
 Notation " A '[' N ']a' '=' V " := (assig_val_a A N V) (at level 100).
 Notation " A '[' N ']i' '=' V " := (assig_val_i A N V) (at level 100).
 Notation " A '[' N ']b' '=' V " := (assig_val_b A N V) (at level 100).
-Notation "E '+e' S" :=(add_e E S) (at level 100).
+Notation "E '+e' S '=e' N" :=(add_e E S N) (at level 100).
 Notation "E '-e' S" :=(elim_e E S) (at level 100).
 
-Check "enum" +e "albastru".
+Check "enum" +e "albastru" =e 1.
 
 Check "v" [ 10 ]a = 5 .
 
 Check "st" s- .
 Check "que" qa+ 5.
-
+(*
 Definition pgm :=
 unsig "a" ;;
 integ "b" ;;
 integ "v" ;;
 "a" :=a: (5 +' 4) ;;
 "b" :=i: ((+ 5) **' (- 5));;
-functie "sum" ~ (unsig "x" ;; integ "y") ~ 
+functie "sum" ~ (unsig "x" ;; integ "y")
 { integ "i" ;; "i" :=i: (- 5) ;; 
 integ "suma" ;; "suma" :=i:( "i" ++' "y") ;; ret "suma" } ;;
 func "sum" parametri:( 5 ;; (+ 6) ) end_p .
 
 Check pgm.
-
+*)
 Inductive Typ : Type := Bool | Nat | Int | StrinG.
 
 (*Tipuri de date pentru declarare*)
@@ -232,12 +239,18 @@ Definition MemLayer := Memory -> Value.
 Definition Stack_mem := list Env.
 
 Inductive Config :=
-  (* nat: last memory zone
-     Env: environment
-     MemLayer: memory layer
-     Stack: stack 
-  *)
+  (* nat: last memory zone | Env: environment | MemLayer: memory layer| Stack: stack  *)
   | config : nat -> Env -> MemLayer -> Stack_mem -> Config.
+
+
+Definition env : Env := fun x => mem_default.
+Definition mem : MemLayer := fun y => undecl.
+Definition last_off : nat := 0.
+Definition St : Stack_mem := nil.
+Definition conf : Config := config last_off env mem St.
+
+
+
 Fixpoint poz_valabil (q : Memory) (mem : MemLayer) (gas : nat): Memory :=
  match gas with 
  | 0 => q
@@ -250,6 +263,21 @@ Fixpoint poz_valabil (q : Memory) (mem : MemLayer) (gas : nat): Memory :=
                            end
              end
 end.
+
+
+Fixpoint poz_next (q : Memory) (mem : MemLayer) (gas : nat): Memory :=
+ match gas with 
+ | 0 => q
+ | S gas' => match q with 
+             | mem_default => mem_default
+             | offset a => match (mem (offset a)) with 
+                           | undecl => (offset a)
+                           | nat_val p => (poz_next (offset(a + 1)) mem gas')
+                           | _ => mem_default
+                           end
+             end
+end.
+
 Reserved Notation "A =[ B , C ]=> N" (at level 70).
 
 Inductive aeval : AExp -> Env -> MemLayer -> Error_Nat -> Prop :=
@@ -480,7 +508,7 @@ Definition update_mem (mem : MemLayer) (x : Memory) (v : Value) : MemLayer :=
         (* Fill in with your own implementation... 
            Handle here each possible usecase when updating the value of a variable.
         *)
-    else undef.
+    else undecl.
 
 
 Fixpoint removelast (l:list Env) : list Env :=
@@ -496,39 +524,148 @@ Definition hd (default:Env) (l:list Env) : Env :=
       | x :: _ => x
     end.
 
-Definition update_conf_decl_var (conf : Config) (sigma : Env) (mem : MemLayer) (last_off : nat) (St : Stack_mem ) (y : string) : Config :=
-(* Pay attention!!! In order to be able to monitor the state of the entire program, you need to
-   implement a function "update_conf", which updates the 
-   entire configuration (environment, memory layout and stack).  
-   config : nat -> Env -> MemLayer -> Stack -> Config (the first value represents the last memory zone, 
-   and you will need to find a way to increment it each time a new variable/function is declared)
-*)
- if ( Memory_beq (sigma y) mem_default) then (config (last_off+1) (update_env sigma y (offset(last_off))) (update_mem mem (offset(last_off)) undecl) St) else conf
+(*Revelatie*)
+ 
+Definition get_mem (c : Config) := match c with
+ | config _ _ m _ => m
+end.
+Definition get_last_of (c : Config) := match c with
+ | config l _ _ _ => l
+end.
+Definition get_env (c : Config) := match c with
+ | config _ e _ _ => e
+end.
+Definition get_stack (c : Config) := match c with
+ | config _ _ _ s => s
+end.
+
+
+Definition update_conf (conf : Config) (y : string) (type : Value ) (dim : nat): Config :=
+
+    if ( Memory_beq ((get_env conf) y) mem_default) then (*daca este nedeclarat, il declar cu o valoare default care sa dea si tipul*) 
+    config ((get_last_of conf)+dim) (update_env (get_env conf) y (offset((get_last_of conf)))) (update_mem (get_mem conf) (offset((get_last_of conf))) type) (get_stack conf) else conf
 .
 
-Definition update_conf_apel_fct (sigma : Env) (mem : MemLayer) (last_off : nat) (St : Stack_mem) : Config :=
- (config (last_off+1) (fun x => mem_default) mem (sigma :: St)).
+Definition update_conf_apel (conf : Config) : Config := 
+    config (get_last_of conf) env (get_mem conf) ((get_env conf)::(get_stack conf))
+.
 
-Definition update_conf_return (St : Stack_mem ) (last_off : nat) (mem : MemLayer) (env : Env): Config :=
- (config (last_off) (hd env St) mem (removelast St)).
-
-
-
-
+Definition update_conf_ret (conf : Config) : Config :=
+    config (get_last_of conf) (hd env (get_stack conf)) (get_mem conf) (removelast (get_stack conf))
+.
 
 
+Fixpoint update_elim_q (conf : Config) (y : Memory) (gas : nat): Config :=
+ match gas with 
+ | 0 => conf
+ | S gas' => match y with 
+             | mem_default => conf
+             | offset a => match (mem (offset a)) with 
+                           | _ => (update_elim_q (config (get_last_of conf) (get_env conf) (update_mem (get_mem conf) (offset a) ((get_mem conf) (offset (a+1)))) (get_stack conf)) (offset(a+1)) gas')
+                           end
+             end
+end. 
+
+Definition update_assig (conf : Config) (y : Memory) (p : nat) (n: Value): Config :=
+match y with
+| mem_default => conf
+| offset a => (config (get_last_of conf) (get_env conf) (update_mem (get_mem conf) (offset(a+p)) n) (get_stack conf)) 
+end.
+
+Fixpoint update_elim_e (conf : Config) (y: Memory) (s1 : string) (gas : nat): Config :=
+ match gas with 
+ | 0 => conf
+ | S gas' =>  match ((get_mem conf) y) with
+             | str_val s => if (Error_Str_beq s (strng s1)) then (config (get_last_of conf) (get_env conf) (update_mem (get_mem conf) ((get_env conf) s1) undecl) (get_stack conf))
+                                      else match y with 
+                                           | mem_default => conf
+                                           | offset a => (update_elim_e conf (offset (a+1)) s1 gas')
+                                           end
+  | _=>conf
+  end
+end.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+Reserved Notation "A -{ C }> CON" (at level 70).
+Inductive eval : Stmt -> Config -> Config -> Prop :=
+| e_decl_nat : forall confi s, unsig s -{ confi }> (update_conf confi s (nat_val 0) 1)
+| e_decl_int : forall confi s, integ s -{ confi }> (update_conf confi s (int_val (pozitiv 0)) 1)
+| e_decl_str : forall confi s, str s -{ confi }> (update_conf confi s (str_val "a") 1)
+| e_decl_bool : forall confi s, boolean s -{ confi }> (update_conf confi s (bool_val true) 1)
+| e_decl_S_a : forall confi s, stku s -{ confi }> (update_conf confi s (nat_val 0) 20)
+| e_decl_S_i : forall confi s, stki s -{ confi }> (update_conf confi s (int_val (pozitiv 0)) 20 )
+| e_decl_S_b : forall confi s, stkb s -{ confi }> (update_conf confi s (bool_val true) 20 )
+| e_elim_s : forall confi s, (s s- ) -{ confi }> 
+(config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) (poz_valabil ((get_env confi) s) (get_mem confi) 20 ) undecl) (get_stack confi)) 
+| e_add_s_a : forall confi s a n, 
+         a =[ (get_env confi) , (get_mem confi) ]=> n -> s sa+ a -{ confi }>
+         (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) (poz_next ((get_env confi) s) (get_mem confi) 20) (nat_val n)) (get_stack confi)) 
+| e_add_s_i : forall confi s a n, 
+         a ={ (get_env confi) , (get_mem confi)}=> n -> s si+ a -{ confi }>
+         (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) (poz_next ((get_env confi) s) (get_mem confi) 20) (int_val n)) (get_stack confi))
+| e_add_s_b : forall confi s a n, 
+         a =| (get_env confi) , (get_mem confi)|=> n -> s sb+ a -{ confi }>
+         (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) (poz_next ((get_env confi) s) (get_mem confi) 20) (bool_val n)) (get_stack confi))
+| e_decl_Q_a : forall confi s, queu s -{ confi }> (update_conf confi s (nat_val 0) 20)
+| e_decl_Q_i : forall confi s, quei s -{ confi }> (update_conf confi s (int_val (pozitiv 0)) 20)
+| e_decl_Q_b : forall confi s, queb s -{ confi }> (update_conf confi s (bool_val true) 20)
+| e_elim_q : forall confi s, (s q-) -{ confi }> (update_elim_q confi ((get_env confi) s) 19)
+| e_add_q_a : forall confi s a n, 
+         a =[ (get_env confi) , (get_mem confi) ]=> n -> s qa+ a -{ confi }>
+         (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) (poz_next ((get_env confi) s) (get_mem confi) 20) (nat_val n)) (get_stack confi))
+| e_add_q_i : forall confi s a n, 
+         a ={ (get_env confi) , (get_mem confi)}=> n -> s qi+ a -{ confi }>
+         (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) (poz_next ((get_env confi) s) (get_mem confi) 20) (int_val n)) (get_stack confi))
+| e_add_q_b : forall confi s a n, 
+         a =| (get_env confi) , (get_mem confi)|=> n -> s qb+ a -{ confi }>
+         (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) (poz_next ((get_env confi) s) (get_mem confi) 20) (bool_val n)) (get_stack confi))
+| e_decl_A_a : forall confi s d, s dimu: d -{ confi }> (update_conf confi s (nat_val 0) d)
+| e_decl_A_i : forall confi s d, s dimi: d -{ confi }> (update_conf confi s (int_val (pozitiv 0)) d)
+| e_decl_A_b : forall confi s d, s dimb: d -{ confi }> (update_conf confi s (bool_val true) d)
+| e_assig_val_a : forall confi s p v n,
+             v =[ (get_env confi) , (get_mem confi) ]=> n -> (s [ p ]a = v) -{ confi }>
+             (update_assig confi ((get_env confi) s) p (nat_val n)) 
+| e_assig_val_i : forall confi s p v n,
+             v ={ (get_env confi) , (get_mem confi) }=> n -> (s [ p ]i = v) -{ confi }>
+             (update_assig confi ((get_env confi) s) p (int_val n)) 
+| e_assig_val_b : forall confi s p v n,
+             v =| (get_env confi) , (get_mem confi) |=> n -> (s [ p ]b = v) -{ confi }>
+             (update_assig confi ((get_env confi) s) p (bool_val n))
+| e_assig_a : forall confi s v n,
+             v =[ (get_env confi) , (get_mem confi) ]=> n -> s :=a: v -{ confi }>
+             (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) ((get_env confi) s) (nat_val n)) (get_stack confi))
+| e_assig_i : forall confi s v n,
+             v ={ (get_env confi) , (get_mem confi) }=> n -> s :=i: v -{ confi }>
+             (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) ((get_env confi) s) (int_val n)) (get_stack confi))
+| e_assig_b : forall confi s v n,
+             v =| (get_env confi) , (get_mem confi) |=> n -> s :=b: v -{ confi }>
+             (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) ((get_env confi) s) (bool_val n)) (get_stack confi))
+| e_assig_s : forall confi s v n,
+             v =< (get_env confi) , (get_mem confi) >=> n -> s :=s: v -{ confi }>
+             (config (get_last_of confi) (get_env confi) (update_mem (get_mem confi) ((get_env confi) s) (str_val n)) (get_stack confi))
+| e_decl_E : forall confi s,
+             enum s -{ confi }> (update_conf confi s (str_val "a") 20 )
+| e_add_e : forall confi s s1 v,
+              (s +e s1 =e v )-{ confi }> (*adaug in locurile pt enum sirul ca valoare si in memorie ca variabila noua la care o sa salvez valoarea*)
+       (config ((get_last_of confi)+1) (update_env (get_env confi) s1 (offset (get_last_of confi))) (update_mem (update_mem (get_mem confi) (poz_next ((get_env confi) s) (get_mem confi) 20) (str_val s1)) (update_env (get_env confi) s1 (offset (get_last_of confi)) s1) (nat_val v)) (get_stack confi))
+| e_elim_e : forall confi s s1,
+             (s -e s1) -{ confi }> (update_elim_e conf ((get_env confi) s) s1 20)
+| e_seq : forall s1 s2 conf conf1 conf2,
+      s1 -{ conf }> conf1 ->
+      s2 -{ conf1 }> conf2 ->
+      (s1 ;; s2) -{ conf }> conf2
+| e_while_false : forall b s conf,
+     b =|(get_env conf) , (get_mem conf)|=> false ->
+     (while b s) -{ conf }> conf
+| e_while_true : forall b s conf conf1,
+     b =|(get_env conf) , (get_mem conf)|=> true ->
+     (seq s (while b s)) -{ conf }> conf1 ->
+     (while b s) -{ conf }> conf1
+| e_if_true : forall b s conf conf',
+        b =|(get_env conf) , (get_mem conf)|=> true ->
+        s -{ conf }> conf' ->
+        (iff b thenn s endd) -{ conf }> conf'
+| e_if_false : forall b s conf,
+      b =|(get_env conf) , (get_mem conf)|=> false ->
+      (iff b thenn s endd) -{ conf }> conf 
+where "A -{ C }> CON" := (eval A C CON).
