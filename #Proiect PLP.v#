@@ -661,14 +661,6 @@ Definition pgm :=
  boolean "bv" ;;
  "bv" :=b: btop_q "coada"
 .
-
-Definition blessi :=
-  (+1) <i (+ 2) 
-.
-
-Example e_blessi : blessi =| env, mem |=> btrue.
-Proof.
- + eapply b_lessthan_i.
 Set Nested Proofs Allowed.
 Example eval_pgm :
  exists confi, pgm -{ conf }> confi /\ (get_mem confi (get_env confi "bv")) = bool_val(btrue).
