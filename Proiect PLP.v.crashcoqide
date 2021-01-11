@@ -82,6 +82,7 @@ Inductive SExp :=
 
 
 Coercion sconst : Error_Str >-> SExp.
+ 
 Notation " A '/+/' B" :=(concat A B) (at level 50, left associativity).
 Check "ana" /+/ "mere".
 
@@ -217,7 +218,7 @@ Scheme Equality for Value.
 
 Inductive Memory :=
   | mem_default : Memory
-  | offset : nat -> Memory. (* offset which indicates the current number of memory zones *)
+  | offset : nat -> Memory. 
 
 Scheme Equality for Memory.
 
@@ -226,7 +227,6 @@ Definition MemLayer := Memory -> Value.
 Definition Stack_mem := list Env.
 
 Inductive Config :=
-  (* nat: last memory zone | Env: environment | MemLayer: memory layer| Stack: stack  *)
   | config : nat -> Env -> MemLayer -> Stack_mem -> Config.
 
 
@@ -235,6 +235,32 @@ Definition mem : MemLayer := fun y => undecl.
 Definition last_off : nat := 0.
 Definition St : Stack_mem := nil.
 Definition conf : Config := config last_off env mem St.
+
+
+Definition update_env (env: Env) (x: string) (n: Memory) : Env :=
+  fun y =>
+      if (andb (string_beq x y ) (Memory_beq (env y) mem_default))
+      then
+        n
+      else
+        (env y).
+Definition update_mem (mem : MemLayer) (x : Memory) (v : Value) : MemLayer :=
+  fun y =>
+    if (Memory_beq y x)
+    then
+       if (Value_beq (mem y) undecl) then v
+       else 
+         match ( (mem y) ) with
+              | nat_val n => if (Value_beq v (nat_val n)) then v else error_value
+              | bool_val b => if (Value_beq v (bool_val b)) then v else error_value
+              | int_val i => if (Value_beq v (int_val i)) then v else error_value
+              | str_val s => if (Value_beq v (str_val s)) then v else error_value
+              | code c => if (Value_beq v (code c)) then v else error_value
+              | error_value => v
+              | undecl => undecl  
+              | undef => undef              
+              end
+    else (mem y).
 
 
 
@@ -295,10 +321,10 @@ Inductive aeval : AExp -> Env -> MemLayer -> Error_Nat -> Prop :=
                                       | _ => error_nat
                                       end
 | a_top_s : forall s sigma mem,
-           atop_s s =[ sigma, mem ]=> match (mem (poz_valabil (sigma s) mem 20)) with
-                                     | nat_val q => q
-                                     | _ => error_nat
-                                     end
+           atop_s s =[ sigma, mem ]=>  match (mem (poz_valabil (sigma s) mem 20)) with
+                       | nat_val q => q
+                       | _ => error_nat
+                              end
 | a_elem_arr : forall ar n sigma mem,
            ar < n >a  =[ sigma, mem ]=> match (sigma ar) with
                                        | mem_default => error_nat
@@ -312,7 +338,22 @@ Inductive aeval : AExp -> Env -> MemLayer -> Error_Nat -> Prop :=
                                       | nat_val q => q
                                       | _ => error_nat
                                       end
-where "A =[ B , C ]=> N" := (aeval A B C N). 
+where "A =[ B , C ]=> N" := (aeval A B C N).
+
+Definition mem' : MemLayer := update_mem mem (offset(5)) (nat_val 10).
+Definition env' : Env := update_env env "que" (offset(5)).
+Example a_ex1 : atop_q "que" =[ env' , mem' ]=> 10.
+Proof.
+ eapply a_top_q.
+Qed.
+
+Definition mem2 : MemLayer := update_mem mem (offset(25)) (nat_val 11).
+Definition env2 : Env := update_env env "stk" (offset(25)).
+Example a_ex2 : atop_s "stk" =[ env2 , mem2 ]=> 11.
+Proof.
+eapply a_top_s.
+Qed.
+
 
 
 Reserved Notation "A ={ B , C }=> N" (at level 70).
@@ -337,19 +378,20 @@ Inductive ieval : IExp -> Env -> MemLayer -> Error_Int -> Prop :=
                                                                         else  negativ (e1 - e2) 
                            end
        end
-| i_mul : forall n1 n2 i1 i2 sigma mem, 
+| i_mul : forall n1 n2 i1 i2 sigma mem rez, 
        n1 ={ sigma, mem }=> i1 ->
        n2 ={ sigma, mem }=> i2 ->
-       n1 **' n2 ={ sigma, mem }=> ( match i1, i2 with
-       | error_int, _ => error_int
-       | _, error_int => error_int 
+       match i1, i2 with
+       | error_int, _ => rez = error_int
+       | _, error_int => rez = error_int 
        | iint a1, iint a2 => match a1, a2 with 
-                           | pozitiv e1, pozitiv e2 => pozitiv (e1 * e2)
-                           | negativ e1, negativ e2 => negativ (e1 * e2)
-                           | pozitiv e1, negativ e2 => negativ (e1 * e2)
-                           | negativ e1, pozitiv e2 => negativ (e1 * e2) 
+                           | pozitiv e1, pozitiv e2 => rez = (pozitiv (e1 * e2))
+                           | negativ e1, negativ e2 => rez = (negativ (e1 * e2))
+                           | pozitiv e1, negativ e2 => rez = (negativ (e1 * e2))
+                           | negativ e1, pozitiv e2 => rez = (negativ (e1 * e2)) 
                            end
-       end) 
+       end ->
+      n1 **' n2 ={ sigma, mem }=> rez
 | i_top_q : forall q sigma mem,
            itop_q  q ={ sigma, mem }=> match (mem (sigma q)) with 
                                       | int_val q => q
@@ -370,6 +412,23 @@ Inductive ieval : IExp -> Env -> MemLayer -> Error_Int -> Prop :=
                                        end
 where "A ={ B , C }=> N" := (ieval A B C N).
 
+Definition memi' : MemLayer := update_mem mem (offset(5)) (int_val ((- 10))).
+Definition envi' : Env := update_env env "que" (offset(5)).
+Example i_ex1 : itop_q "que" ={ envi' , memi' }=> (- 10).
+Proof.
+ eapply i_top_q.
+Qed.
+
+Definition mem_h : MemLayer := update_mem mem (offset 27) (int_val ((-2))).
+Definition mem3 : MemLayer :=update_mem mem_h (offset 26) (int_val ((+5))).
+Definition env3 : Env := update_env (update_env env "c" (offset 27)) "b" (offset 26).
+Compute mem3 (env3 "b").
+Example i_ex2 : ("c" **' "b") ={ env3 , mem3 }=> (-10).
+Proof.
+eapply i_mul. eapply i_var. eapply i_var. simpl. reflexivity.
+Qed. 
+
+
 Reserved Notation "A =< B , C >=> N" (at level 70).
 Inductive seval : SExp -> Env -> MemLayer -> Error_Str -> Prop :=
 | s_const : forall n sigma mem, sconst n =< sigma, mem >=> n
@@ -388,6 +447,16 @@ Inductive seval : SExp -> Env -> MemLayer -> Error_Str -> Prop :=
           s1 /+/ s2 =< sigma, mem >=> sir_fin
 where "A =< B , C >=> N" := (seval A B C N).
 
+Definition mems : MemLayer := update_mem (update_mem mem (offset 5) (str_val "Ana")) (offset 6) (str_val "-Maria").
+Definition envs : Env := update_env (update_env env "a" (offset 5)) "b" (offset 6).
+Example s_exem : ( svar "a" /+/ svar "b") =< envs , mems >=> "Ana-Maria".
+Proof.
+ eapply s_concat. eapply s_var. eapply s_var. simpl. reflexivity.
+Qed.
+
+
+
+
 Reserved Notation "A =| B , C |=> N" (at level 70).
 Inductive beval : BExp -> Env -> MemLayer -> Error_Bol -> Prop :=
 | b_cst : forall b sigma mem, bcst b =| sigma, mem |=> b
@@ -395,18 +464,19 @@ Inductive beval : BExp -> Env -> MemLayer -> Error_Bol -> Prop :=
                                                        | bool_val q => q
                                                        | _ => error_bol
                                                        end
-| b_lessthan_a : forall a1 a2 i1 i2 sigma mem,
+| b_lessthan_a : forall a1 a2 i1 i2 sigma mem rez,
        a1 =[ sigma, mem ]=> i1 ->
        a2 =[ sigma, mem ]=> i2 ->
-       a1 <a a2 =| sigma, mem |=> (match i1, i2 with
-       | error_nat, _ => error_bol
-       | _, error_nat => error_bol
-       | num a1, num a2 => if (Nat.ltb a1 a2) then btrue else bfalse
-       end)
+       match i1, i2 with
+       | error_nat, _ => rez = error_bol
+       | _, error_nat => rez = error_bol
+       | num a1, num a2 => if (Nat.ltb a1 a2) then rez = btrue else rez = bfalse
+       end ->
+       a1 <a a2 =| sigma, mem |=> rez
 | b_lessthan_i : forall a1 a2 i1 i2 sigma mem rez,
        a1 ={ sigma, mem }=> i1 ->
        a2 ={ sigma, mem }=> i2 ->
-match i1, i2 with
+       match i1, i2 with
        | error_int, _ => rez = error_bol
        | _, error_int => rez = error_bol
        | iint a3, iint a4 => match a3, a4 with
@@ -430,14 +500,15 @@ match i1, i2 with
           b1 =| sigma, mem |=> btrue ->
           b2 =| sigma, mem |=> rez ->
           b1 &* b2 =| sigma, mem|=> rez
-| b_eq_str : forall s1 s2 sir1 sir2 sigma mem,
+| b_eq_str : forall s1 s2 sir1 sir2 sigma mem rez,
           s1 =< sigma, mem >=> sir1 ->
           s2 =< sigma, mem >=> sir2 ->
-          s1 =* s2 =| sigma, mem |=> (match sir1, sir2 with
-          | error_str, _ => error_bol
-          | _, error_str => error_bol
-          | strng i1, strng i2 => if (i1 =? i2) then btrue else bfalse
-          end )
+           match sir1, sir2 with
+          | error_str, _ => rez = error_bol
+          | _, error_str => rez = error_bol
+          | strng i1, strng i2 => if (i1 =? i2) then rez= btrue else rez = bfalse
+          end ->
+          s1 =* s2 =| sigma, mem |=> rez
 | b_top_q : forall q sigma mem,
            btop_q  q =| sigma, mem |=> match (mem (sigma q)) with 
                                       | bool_val q => q
@@ -459,31 +530,17 @@ match i1, i2 with
 where "A =| B , C |=> N" := (beval A B C N).
 
 
-Definition update_env (env: Env) (x: string) (n: Memory) : Env :=
-  fun y =>
-      (* If the variable has assigned a default memory zone, 
-         then it will be updated with the current memory offset *)
-      if (andb (string_beq x y ) (Memory_beq (env y) mem_default))
-      then
-        n
-      else
-        (env y).
-Definition update_mem (mem : MemLayer) (x : Memory) (v : Value) : MemLayer :=
-  fun y =>
-    if (Memory_beq y x)
-    then
-       if (Value_beq (mem y) undecl) then v
-       else 
-         match ( (mem y) ) with
-              | nat_val n => if (Value_beq v (nat_val n)) then v else error_value
-              | bool_val b => if (Value_beq v (bool_val b)) then v else error_value
-              | int_val i => if (Value_beq v (int_val i)) then v else error_value
-              | str_val s => if (Value_beq v (str_val s)) then v else error_value
-              | code c => if (Value_beq v (code c)) then v else error_value
-              | error_val => v
-              end
-    else undecl.
+Example b_ex1 : ( (svar "a") =* (svar "b")) =| envs , mems |=> bfalse.
+Proof.
+ eapply b_eq_str. eapply s_var. eapply s_var. simpl. reflexivity.
+Qed.
 
+Example b_Ex2 : btrue &* ( (svar "a") =* (svar "b")) =| envs, mems|=> bfalse.
+Proof.
+ eapply b_and_true. eapply b_cst.  
+ eapply b_eq_str. eapply s_var. eapply s_var.
+ simpl. reflexivity.
+Qed.
 
 Fixpoint removelast (l:list Env) : list Env :=
     match l with
@@ -498,8 +555,7 @@ Definition hd (default:Env) (l:list Env) : Env :=
       | x :: _ => x
     end.
 
-(*Revelatie*)
- 
+
 Definition get_mem (c : Config) := match c with
  | config _ _ m _ => m
 end.
@@ -644,7 +700,6 @@ Inductive eval : Stmt -> Config -> Config -> Prop :=
       (iff b thenn s endd) -{ conf }> conf 
 where "A -{ C }> CON" := (eval A C CON).
 
-
 Definition pgm :=
  unsig "a" ;;
  integ "b" ;;
@@ -655,23 +710,13 @@ Definition pgm :=
  ("stv" sa+ 5) ;;
  "array" dimi: 6 ;;
  ( "array" [ 1 ]i = (+ 1) );;
- iff ( ("array" < 1 >i) <i (+ 2) ) thenn "v" :=i: (-1) endd ;;
- queb "coada" ;;
- ( "coada" qb+ btrue ) ;;
- boolean "bv" ;;
- "bv" :=b: btop_q "coada"
+ iff ( ("array" < 1 >i) <i (+ 2) ) thenn "v" :=i: (-1) endd
 .
 
-Definition blessi :=
-  (+1) <i (+ 2) 
-.
 
-Example e_blessi : blessi =| env, mem |=> btrue.
-Proof.
- + eapply b_lessthan_i.
 Set Nested Proofs Allowed.
 Example eval_pgm :
- exists confi, pgm -{ conf }> confi /\ (get_mem confi (get_env confi "bv")) = bool_val(btrue).
+ exists confi, pgm -{ conf }> confi /\ (get_mem confi (get_env confi "v")) = (int_val (iint ((-1)))).
 Proof.
  eexists.
  split.
@@ -689,25 +734,15 @@ Proof.
                                            ++++ eapply e_decl_int.
                                      ---- eapply e_decl_int.
                                 --- eapply e_assig_a. eapply a_plus. eapply a_const. eapply a_const.
-                            -- eapply e_assig_i. eapply i_mul. eapply i_int. eapply i_int.
+                            -- apply e_assig_i with (n := (-25)). eapply i_mul. eapply i_int. eapply i_int. simpl. reflexivity.
                       *** eapply e_decl_S_a.
                 ** eapply e_add_s_a. eapply a_const.
              * eapply e_decl_A_i. 
          +++ eapply e_assig_val_i. eapply i_int.
-      ++ eapply e_seq.
-         +++ eapply e_seq.
-             * eapply e_seq.
-               ** eapply e_seq.
-                *** eapply e_if_true. eapply b_lessthan_i. eapply i_elem_arr. eapply i_int. simpl. reflexivity. 
+      ++ eapply e_if_true. eapply b_lessthan_i. eapply i_elem_arr. eapply i_int. simpl. reflexivity. 
                     eapply e_assig_i. eapply i_int. 
-                *** eapply e_decl_Q_b.
-               ** eapply e_add_q_b. eapply b_cst.
-            * eapply e_decl_bool.
-          +++ eapply e_assig_b. eapply b_top_q.
-
-
-
-
+   - simpl. unfold update_mem. simpl. reflexivity.
+Qed.
 
 
 
